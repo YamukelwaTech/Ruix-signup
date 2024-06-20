@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
+// Getting backend URL from environment variable
+const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+// Initial state for the signup slice
 const initialState = {
   name: "",
   email: "",
@@ -9,17 +13,20 @@ const initialState = {
   feedbackMessage: "",
 };
 
+// Async thunk to handle user registration
 export const registerUser = createAsyncThunk(
   "signup/registerUser",
   async (userData, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/register",
+        `${backendUrl}/api/register`,
         userData
       );
-      localStorage.setItem('token', response.data.token);
+      localStorage.removeItem("token");
+      localStorage.setItem("token", response.data.token);
       return response.data;
     } catch (error) {
+      console.error("Registration error:", error.response || error.message);
       return rejectWithValue(
         error.response?.data || { message: "Registration failed!" }
       );
@@ -27,14 +34,20 @@ export const registerUser = createAsyncThunk(
   }
 );
 
+// Async thunk to handle Google login
 export const googleLogin = createAsyncThunk(
   "signup/googleLogin",
-  async (token, { rejectWithValue }) => {
+  async ({ code }, { rejectWithValue }) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/google-login", { token });
-      localStorage.setItem('token', response.data.token); 
+      const response = await axios.post(
+        `${backendUrl}/api/google-login`,
+        { code }
+      );
+      localStorage.removeItem("token");
+      localStorage.setItem("token", response.data.token);
       return response.data;
     } catch (error) {
+      console.error("Google login error:", error.response || error.message);
       return rejectWithValue(
         error.response?.data || { message: "Google login failed!" }
       );
@@ -42,6 +55,7 @@ export const googleLogin = createAsyncThunk(
   }
 );
 
+// Creating the signup slice
 const signupSlice = createSlice({
   name: "signup",
   initialState,
@@ -73,7 +87,7 @@ const signupSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(registerUser.fulfilled, (state, action) => {
+      .addCase(registerUser.fulfilled, (state) => {
         state.feedbackMessage = "Registration successful!";
         state.name = "";
         state.email = "";
@@ -84,7 +98,7 @@ const signupSlice = createSlice({
         state.feedbackMessage =
           action.payload?.message || "Registration failed!";
       })
-      .addCase(googleLogin.fulfilled, (state, action) => {
+      .addCase(googleLogin.fulfilled, (state) => {
         state.feedbackMessage = "Google login successful!";
       })
       .addCase(googleLogin.rejected, (state, action) => {
@@ -94,6 +108,7 @@ const signupSlice = createSlice({
   },
 });
 
+// Exporting action creators and reducer from signupSlice
 export const {
   setName,
   setEmail,
@@ -103,4 +118,4 @@ export const {
   setFeedbackMessage,
   clearFeedbackMessage,
 } = signupSlice.actions;
-export default signupSlice.reducer;
+export default signupSlice.reducer; // Exporting the reducer function
